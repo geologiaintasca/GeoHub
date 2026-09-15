@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+
+<!-- Leaflet: foglio di stile PRIMA di qualunque CSS personalizzato -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<!-- Leaflet: script caricato nell'HEAD, prima degli script di calcolo dell'app -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SismaSite · Analisi Sismica del Sito NTC 2018</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --navy-950:#0b1521;
+    --navy-900:#0f1e30;
+    --navy-800:#152a41;
+    --navy-700:#1d3a58;
+    --slate-600:#4c5d72;
+    --slate-500:#6b7d93;
+    --slate-300:#aab8c8;
+    --slate-100:#e7ecf1;
+    --paper:#ffffff;
+    --bg:#f3f5f8;
+    --accent:#2f7dd6;
+    --accent-dark:#1f5fab;
+    --warn:#b5501a;
+    --warn-bg:#fdf1e8;
+    --danger:#a31f2e;
+    --danger-bg:#fbeaec;
+    --ok:#1f7a4d;
+    --ok-bg:#eaf6ef;
+    --line:#dbe2ea;
+    --radius:3px;
+    --font-ui:'Source Sans 3', Arial, sans-serif;
+    --font-mono:'IBM Plex Mono', 'Courier New', monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:var(--font-ui);
+    background:var(--bg);
+    color:var(--navy-950);
+    font-size:14.5px;
+    line-height:1.5;
+  }
+  h1,h2,h3{font-family:var(--font-ui); margin:0; font-weight:600; color:var(--navy-950);}
+  a{color:var(--accent-dark);}
+
+  /* ===== Topbar ===== */
+  .topbar{
+    background:var(--navy-950);
+    color:var(--slate-100);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 22px;
+    height:58px;
+    border-bottom:3px solid var(--accent);
+  }
+  .brand{display:flex; align-items:baseline; gap:10px;}
+  .brand .mark{
+    width:11px;height:11px;background:var(--accent);border-radius:1px;
+    transform:rotate(45deg);
+  }
+  .brand-text{font-size:17px; font-weight:600; letter-spacing:.2px;}
+  .brand-sub{font-size:12px; color:var(--slate-300); font-weight:400;}
+  .topbar-actions{display:flex; gap:10px; align-items:center;}
+
+  .btn{
+    font-family:var(--font-ui);
+    border:1px solid var(--line);
+    background:var(--paper);
+    color:var(--navy-900);
+    padding:8px 16px;
+    border-radius:var(--radius);
+    cursor:pointer;
+    font-size:13.5px;
+    font-weight:500;
+    transition:background .12s, border-color .12s;
+  }
+  .btn:hover{border-color:var(--slate-500);}
+  .btn-primary{
+    background:var(--accent); border-color:var(--accent); color:#fff;
+  }
+  .btn-primary:hover{background:var(--accent-dark); border-color:var(--accent-dark);}
+  .btn-ghost{
+    background:transparent; border-color:var(--slate-600); color:var(--slate-100);
+  }
+  .btn-ghost:hover{background:var(--navy-800);}
+  .btn-block{width:100%;}
+  .btn-sm{padding:5px 10px; font-size:12.5px;}
+
+  /* ===== Layout ===== */
+  .app{
+    display:grid;
+    grid-template-columns:380px 1fr;
+    gap:18px;
+    padding:20px;
+    max-width:1520px;
+    margin:0 auto;
+  }
+  @media (max-width:980px){
+    .app{grid-template-columns:1fr;}
+  }
+
+  .panel{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    margin-bottom:18px;
+  }
+  .panel-header{
+    padding:12px 16px;
+    border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .panel-header h2{font-size:14px; text-transform:uppercase; letter-spacing:.4px; color:var(--slate-600);}
+  .panel-body{padding:16px;}
+
+  .field{margin-bottom:13px;}
+  .field label{
+    display:block; font-size:12.5px; color:var(--slate-600); margin-bottom:5px; font-weight:500;
+  }
+  .field input[type=text], .field input[type=number], .field select{
+    width:100%;
+    padding:8px 10px;
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    font-family:var(--font-mono);
+    font-size:13.5px;
+    background:#fbfcfd;
+    color:var(--navy-950);
+  }
+  .field input:focus, .field select:focus{outline:none; border-color:var(--accent);}
+  .field-row{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .hint{font-size:11.5px; color:var(--slate-500); margin-top:4px;}
+
+  #map{height:230px; border-radius:var(--radius); border:1px solid var(--line);}
+
+  .divider{height:1px; background:var(--line); margin:14px 0;}
+
+  /* ===== Results ===== */
+  .kpi-row{display:grid; grid-template-columns:repeat(4,1fr); gap:12px;}
+  @media (max-width:760px){.kpi-row{grid-template-columns:repeat(2,1fr);}}
+  .kpi{
+    background:var(--paper); border:1px solid var(--line); border-left:3px solid var(--accent);
+    border-radius:var(--radius); padding:12px 14px;
+  }
+  .kpi .kpi-label{font-size:11.5px; color:var(--slate-600); text-transform:uppercase; letter-spacing:.3px;}
+  .kpi .kpi-value{font-family:var(--font-mono); font-size:22px; font-weight:600; color:var(--navy-900); margin-top:4px;}
+  .kpi .kpi-unit{font-size:12px; color:var(--slate-500); font-family:var(--font-ui);}
+
+  table.data-table{width:100%; border-collapse:collapse; font-size:13px;}
+  table.data-table th, table.data-table td{
+    padding:8px 10px; text-align:right; border-bottom:1px solid var(--line);
+  }
+  table.data-table th:first-child, table.data-table td:first-child{text-align:left;}
+  table.data-table th{
+    background:var(--slate-100); color:var(--navy-800); font-weight:600; font-size:12px;
+    text-transform:uppercase; letter-spacing:.3px;
+  }
+  table.data-table td{font-family:var(--font-mono);}
+  table.data-table tr:last-child td{border-bottom:none;}
+  tr.hl td{background:#eef5fd;}
+
+  .chart-toolbar{display:flex; align-items:center; gap:14px; padding:0 16px 12px;}
+  .chart-toolbar label{font-size:12.5px; color:var(--slate-600); font-weight:500; margin-right:6px;}
+  .chart-wrap{padding:0 16px 16px; height:340px;}
+
+  .legend-note{display:flex; gap:18px; padding:0 16px 14px; font-size:12px; color:var(--slate-600); flex-wrap:wrap;}
+  .legend-swatch{display:inline-block; width:12px; height:3px; margin-right:6px; vertical-align:middle;}
+
+  .alert{
+    border-radius:var(--radius);
+    padding:12px 14px;
+    font-size:13px;
+    margin-top:12px;
+    border:1px solid transparent;
+  }
+  .alert-warn{background:var(--warn-bg); border-color:#eecba3; color:var(--warn);}
+  .alert-danger{background:var(--danger-bg); border-color:#eabec3; color:var(--danger);}
+  .alert-ok{background:var(--ok-bg); border-color:#bfe3cd; color:var(--ok);}
+  .alert-title{font-weight:600; margin-bottom:3px; display:block;}
+
+  .two-col{display:grid; grid-template-columns:1fr 1fr; gap:18px;}
+  @media (max-width:980px){.two-col{grid-template-columns:1fr;}}
+
+  .disclaimer{
+    font-size:12px; color:var(--slate-500); background:var(--slate-100);
+    border-radius:var(--radius); padding:10px 12px; margin-top:6px; line-height:1.5;
+  }
+  .disclaimer b{color:var(--navy-800);}
+
+  .checkline{display:flex; align-items:center; gap:8px; margin-bottom:12px;}
+  .checkline input{width:16px; height:16px;}
+  .checkline label{font-size:13px; color:var(--navy-900); font-weight:500;}
+
+  .subgrid-hidden{display:none;}
+
+  .footer-note{
+    text-align:center; color:var(--slate-500); font-size:11.5px; padding:20px 0 40px;
+  }
+
+  /* ===== Print ===== */
+  @media print{
+    body{background:#fff; font-size:11.5px;}
+    .no-print{display:none !important;}
+    .app{display:block; padding:0; max-width:100%;}
+    .panel{border:1px solid #999; break-inside:avoid; margin-bottom:14px; box-shadow:none;}
+    .panel-header{background:#eee !important; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+    #map{height:200px;}
+    .kpi-row{grid-template-columns:repeat(4,1fr);}
+    .chart-wrap{height:260px;}
+    a{color:#000; text-decoration:none;}
+    .two-col{grid-template-columns:1fr 1fr;}
+    .kpi{border-left:3px solid #333;}
+    /* Disaggregazione: la matrice completa deve comparire nel report anche se
+       non è stata aperta a schermo, per garantire una relazione completa */
+    #matrixWrap{display:block !important; break-inside:avoid;}
+    #disaggMatrixTable{font-size:9px;}
+    #disaggMatrixTable th, #disaggMatrixTable td{padding:3px 4px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar no-print">
+  <div class="brand">
+    <span class="mark"></span>
+    <span class="brand-text">SismaSite</span>
+    <span class="brand-sub">Analisi sismica del sito — NTC 2018</span>
+  </div>
+  <div class="topbar-actions">
+    <button class="btn btn-ghost" id="btnPrint">Stampa / Salva Report PDF</button>
+  </div>
+</div>
+
+<div class="app">
+
+  <!-- ================= LEFT: INPUT ================= -->
+  <div class="col-input">
+
+    <div class="panel">
+      <div class="panel-header"><h2>Ubicazione del sito</h2></div>
+      <div class="panel-body">
+        <div id="map"></div>
+        <div class="hint no-print">Clicca sulla mappa per selezionare il sito, oppure inserisci le coordinate manualmente.</div>
+        <div class="divider"></div>
+        <div class="field-row">
+          <div class="field">
+            <label for="lat">Latitudine (WGS84)</label>
+            <input type="number" id="lat" step="0.0001" value="42.3499">
+          </div>
+          <div class="field">
+            <label for="lon">Longitudine (WGS84)</label>
+            <input type="number" id="lon" step="0.0001" value="13.3995">
+          </div>
+        </div>
+        <div class="hint">Default: L'Aquila. Griglia di riferimento: nodi INGV interpolati (algoritmo semplificato, vedi nota).</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><h2>Parametri geotecnici e d'uso</h2></div>
+      <div class="panel-body">
+        <div class="field">
+          <label for="soilCat">Categoria di sottosuolo</label>
+          <select id="soilCat">
+            <option value="A">A — Ammassi rocciosi / suoli molto rigidi</option>
+            <option value="B" selected>B — Rocce tenere e depositi molto addensati</option>
+            <option value="C">C — Depositi mediamente addensati</option>
+            <option value="D">D — Depositi scarsamente addensati</option>
+            <option value="E">E — Strato alluvionale su substrato rigido</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="topoCat">Categoria topografica</label>
+          <select id="topoCat">
+            <option value="T1" selected>T1 — Superficie pianeggiante (i &lt; 15°)</option>
+            <option value="T2">T2 — Pendio (i &gt; 15°)</option>
+            <option value="T3">T3 — Rilievo con larghezza in cresta modesta</option>
+            <option value="T4">T4 — Rilievo con larghezza in cresta molto modesta</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="vn">Vita nominale V<sub>N</sub> (anni)</label>
+            <input type="number" id="vn" value="50">
+          </div>
+          <div class="field">
+            <label for="cu">Classe d'uso</label>
+            <select id="cu">
+              <option value="0.7">I — C<sub>U</sub> = 0.7</option>
+              <option value="1.0" selected>II — C<sub>U</sub> = 1.0</option>
+              <option value="1.5">III — C<sub>U</sub> = 1.5</option>
+              <option value="2.0">IV — C<sub>U</sub> = 2.0</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="damping">Smorzamento viscoso ξ (%)</label>
+          <input type="number" id="damping" value="5" min="1" max="30" step="0.5">
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><h2>Screening liquefazione (opzionale)</h2></div>
+      <div class="panel-body">
+        <div class="checkline">
+          <input type="checkbox" id="liqEnable">
+          <label for="liqEnable">Attiva verifica preliminare di liquefacibilità</label>
+        </div>
+        <div id="liqFields" class="subgrid-hidden">
+          <div class="field">
+            <label for="gwDepth">Profondità falda da p.c. (m)</label>
+            <input type="number" id="gwDepth" value="2.0" step="0.1">
+          </div>
+          <div class="field">
+            <label for="soilType">Tipologia terreno prevalente (0–15 m)</label>
+            <select id="soilType">
+              <option value="sabbia_sciolta">Sabbia sciolta / sabbia limosa (NSPT bassa)</option>
+              <option value="sabbia_addensata">Sabbia addensata</option>
+              <option value="ghiaia">Ghiaia</option>
+              <option value="argilla">Argilla / limo coesivo</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-block no-print" id="btnCalc" style="padding:12px; font-size:14.5px;">Calcola parametri sismici</button>
+  </div>
+
+  <!-- ================= RIGHT: OUTPUT ================= -->
+  <div class="col-output">
+
+    <div class="panel">
+      <div class="panel-header"><h2>Parametri di pericolosità sismica di base</h2></div>
+      <div class="panel-body">
+        <table class="data-table">
+          <thead>
+            <tr><th>Stato limite</th><th>P<sub>VR</sub></th><th>T<sub>R</sub> (anni)</th><th>a<sub>g</sub> (g)</th><th>F<sub>0</sub></th><th>T<sub>C</sub>* (s)</th></tr>
+          </thead>
+          <tbody id="hazardTableBody"></tbody>
+        </table>
+        <div class="disclaimer" id="gridDisclaimer">
+          <b>Nota metodologica:</b> a<sub>g</sub>, F<sub>0</sub> e T<sub>C</sub>* sono calcolati caricando la griglia da <code>grid-data.json</code> con l'algoritmo di doppia interpolazione dell'Allegato A al D.M. 14/01/2008 (interpolazione spaziale IDW sui 4 nodi più vicini + interpolazione log-log tra i periodi di ritorno di riferimento). <b>Il file <code>grid-data.json</code> incluso è un reticolo dimostrativo a 20 nodi.</b> Per uso professionale, generare il reticolo ufficiale a 10.751 nodi (Allegato B, Open Data MIT/INGV) con lo script <code>convert_grid.py</code> incluso — vedi i commenti nello script per il formato del file di input.
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><h2>Sintesi stato limite selezionato</h2>
+        <div class="no-print">
+          <label style="font-size:12.5px; color:var(--slate-600); margin-right:6px;">Stato limite:</label>
+          <select id="lsSelect" style="padding:5px 8px; border-radius:3px; border:1px solid var(--line); font-family:var(--font-mono);">
+            <option value="SLO">SLO</option>
+            <option value="SLD">SLD</option>
+            <option value="SLV" selected>SLV</option>
+            <option value="SLC">SLC</option>
+          </select>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="kpi-row">
+          <div class="kpi"><div class="kpi-label">S<sub>S</sub> · S<sub>T</sub></div><div class="kpi-value" id="kpiS">–</div></div>
+          <div class="kpi"><div class="kpi-label">a<sub>max</sub> = S·a<sub>g</sub></div><div class="kpi-value" id="kpiAmax">–</div><div class="kpi-unit">g</div></div>
+          <div class="kpi"><div class="kpi-label">Coefficiente k<sub>h</sub></div><div class="kpi-value" id="kpiKh">–</div></div>
+          <div class="kpi"><div class="kpi-label">Coefficiente k<sub>v</sub></div><div class="kpi-value" id="kpiKv">–</div></div>
+        </div>
+        <div class="divider"></div>
+        <table class="data-table">
+          <tbody id="ampliTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><h2>Spettri di risposta elastici</h2></div>
+      <div class="chart-toolbar no-print">
+        <label>Componente:</label>
+        <select id="spectrumMode" style="padding:5px 8px; border-radius:3px; border:1px solid var(--line);">
+          <option value="both" selected>Orizzontale + Verticale</option>
+          <option value="h">Solo orizzontale</option>
+          <option value="v">Solo verticale</option>
+        </select>
+      </div>
+      <div class="chart-wrap"><canvas id="spectrumChart"></canvas></div>
+      <div class="legend-note">
+        <span><span class="legend-swatch" style="background:#2f7dd6;"></span>S<sub>e</sub> orizzontale (T)</span>
+        <span><span class="legend-swatch" style="background:#b5501a;"></span>S<sub>ve</sub> verticale (T)</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <h2>Disaggregazione della pericolosità sismica</h2>
+        <div style="font-size:12px; color:var(--slate-600);">Riferita allo stato limite selezionato (T<sub>R</sub> = <span id="disaggTRLabel">–</span> anni)</div>
+      </div>
+      <div class="panel-body">
+
+        <div class="field-row" style="grid-template-columns:1fr 1fr 1fr;">
+          <div class="field">
+            <label for="magMw">Magnitudo media M<sub>w</sub></label>
+            <input type="number" id="magMw" step="0.1" value="6.0">
+          </div>
+          <div class="field">
+            <label for="distR">Distanza media R (km)</label>
+            <input type="number" id="distR" step="1" value="20">
+          </div>
+          <div class="field">
+            <label for="magEps">Epsilon media ε</label>
+            <input type="number" id="magEps" step="0.05" value="0.80">
+          </div>
+        </div>
+        <button class="btn btn-sm no-print" id="btnEstimateDisagg" style="margin-bottom:16px;">Stima automatica da posizione</button>
+
+        <div class="divider"></div>
+
+        <!-- Header sintetico: terremoto dominante -->
+        <h3 style="font-size:13px; text-transform:uppercase; letter-spacing:.4px; color:var(--slate-600); margin-bottom:10px;">Terremoto dominante</h3>
+        <div class="kpi-row" style="grid-template-columns:repeat(3,1fr);">
+          <div class="kpi"><div class="kpi-label">Magnitudo media M<sub>w</sub></div><div class="kpi-value" id="kpiDisaggMw">–</div></div>
+          <div class="kpi"><div class="kpi-label">Distanza media R</div><div class="kpi-value" id="kpiDisaggR">–</div><div class="kpi-unit">km</div></div>
+          <div class="kpi"><div class="kpi-label">Epsilon media ε</div><div class="kpi-value" id="kpiDisaggEps">–</div></div>
+        </div>
+        <div class="alert alert-ok" id="disaggNote" style="margin-top:12px;"></div>
+
+        <div class="divider"></div>
+
+        <!-- Grafico di disaggregazione -->
+        <h3 style="font-size:13px; text-transform:uppercase; letter-spacing:.4px; color:var(--slate-600); margin-bottom:6px;">Contributo per classi di magnitudo e distanza</h3>
+        <div class="chart-wrap" style="height:300px; padding:0 0 10px;"><canvas id="disaggChart"></canvas></div>
+        <div class="legend-note" id="disaggLegend"></div>
+
+        <!-- Matrice completa, comprimibile -->
+        <div class="no-print" style="margin-top:6px;">
+          <button class="btn btn-sm" id="btnToggleMatrix">Visualizza matrice completa M<sub>w</sub>–R</button>
+        </div>
+        <div id="matrixWrap" style="display:none; margin-top:14px;">
+          <div style="overflow-x:auto;">
+            <table class="data-table" id="disaggMatrixTable" style="min-width:720px;"></table>
+          </div>
+          <div class="disclaimer" style="margin-top:10px;">Percentuali per cella (M<sub>w</sub> × R) generate con un modello bivariato semplificato, calibrato sui valori medi M<sub>w</sub>, R ed ε sopra indicati (illustrativo, non i dati reali di disaggregazione INGV del progetto MPS04/S1 per il nodo esatto). Per un rapporto di disaggregazione ufficiale, consultare il servizio INGV o il report MPS04-S1 per il nodo e il T<sub>R</sub> di interesse.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header"><h2>Screening pendii &amp; liquefazione</h2></div>
+      <div class="panel-body">
+        <table class="data-table">
+          <tr><td>Categoria topografica</td><td id="outTopo">–</td></tr>
+          <tr><td>Coefficiente sismico orizzontale k<sub>h</sub></td><td id="outKh2">–</td></tr>
+          <tr><td>Coefficiente sismico verticale k<sub>v</sub></td><td id="outKv2">–</td></tr>
+        </table>
+        <div id="liqResult"></div>
+      </div>
+    </div>
+
+    <div class="footer-note">
+      SismaSite · Strumento di supporto preliminare secondo D.M. 17/01/2018 (NTC 2018) e Circolare n.7/2019. Non sostituisce la relazione geologica/geotecnica né i valori ufficiali della pericolosità sismica INGV.
+    </div>
+  </div>
+</div>
+
+<script>
+/* ======================================================================
+   1. MAPPA LEAFLET
+   Inizializzata solo dopo il caricamento completo del DOM, per evitare
+   qualunque corsa tra il parsing della pagina e la disponibilità
+   dell'oggetto globale L (Leaflet). map/marker sono dichiarate qui con
+   `let`, nello scope del tag <script>, e assegnate dentro il listener:
+   restano quindi accessibili al resto del codice (es. map.invalidateSize()
+   nel gestore di window 'load' più in basso).
+====================================================================== */
+let map, marker;
+
+document.addEventListener('DOMContentLoaded', function initMap(){
+  if(typeof L === 'undefined'){
+    console.error('Leaflet (L) non è definito: la libreria non si è caricata. Verifica la connessione di rete o che unpkg.com non sia bloccato (es. da un ad-blocker o da un proxy aziendale).');
+    const mapDiv = document.getElementById('map');
+    if(mapDiv){
+      mapDiv.innerHTML = '<div style="padding:14px; font-size:13px; color:#a31f2e; background:#fbeaec; border-radius:3px;">Impossibile caricare la mappa: la libreria Leaflet non è stata scaricata (unpkg.com irraggiungibile). Le coordinate possono comunque essere inserite manualmente nei campi qui sotto.</div>';
+    }
+    return;
+  }
+
+  map = L.map('map', {zoomControl:true}).setView([42.3499, 13.3995], 6);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution:'&copy; OpenStreetMap contributors', maxZoom:18
+  }).addTo(map);
+
+  marker = L.marker([42.3499,13.3995], {draggable:true}).addTo(map);
+
+  map.on('click', e=>{
+    marker.setLatLng(e.latlng);
+    setCoordFields(e.latlng.lat, e.latlng.lng);
+  });
+  marker.on('dragend', ()=>{
+    const p = marker.getLatLng();
+    setCoordFields(p.lat, p.lng);
+  });
+});
+
+function setCoordFields(lat,lon){
+  document.getElementById('lat').value = lat.toFixed(4);
+  document.getElementById('lon').value = lon.toFixed(4);
+}
+document.getElementById('lat').addEventListener('change', syncMapFromFields);
+document.getElementById('lon').addEventListener('change', syncMapFromFields);
+function syncMapFromFields(){
+  const lat = parseFloat(document.getElementById('lat').value);
+  const lon = parseFloat(document.getElementById('lon').value);
+  if(!isNaN(lat) && !isNaN(lon) && map && marker){
+    marker.setLatLng([lat,lon]);
+    map.setView([lat,lon], map.getZoom());
+  }
+}
+
+/* ======================================================================
+   2. GRIGLIA DI PERICOLOSITA' SISMICA — caricata da grid-data.json
+   Interpolazione a due passaggi come da Allegato A al D.M. 14/01/2008:
+     a) interpolazione spaziale IDW (pesi = 1/distanza) sui nodi più vicini,
+        eseguita separatamente per ciascuno dei 9 periodi di ritorno TR;
+     b) interpolazione "log-log" (di potenza) tra i due TR di riferimento
+        che racchiudono il TR desiderato: p(TR)=p(TR1)*(p(TR2)/p(TR1))^k,
+        k = ln(TR/TR1)/ln(TR2/TR1).
+
+   FORMATI DI grid-data.json SUPPORTATI (auto-rilevati da normalizeGrid):
+   A) "a nodi" (leggibile, usato dalla griglia demo a 20 nodi):
+        { meta:{trValues:[9]}, nodes:[ {id,lon,lat,ag:[9],F0:[9],Tc:[9]}, ... ] }
+   B) "a nodi compatto" (array invece di oggetto, ~35% più leggero di A):
+        { meta:{trValues:[9]}, nodes:[ [id,lon,lat, ag1,F01,Tc1, ag2,F02,Tc2, ...], ... ] }
+   C) "colonnare" (consigliato per il reticolo ufficiale a 10751 nodi,
+      il più compatto: nessuna chiave ripetuta per nodo):
+        { meta:{trValues:[9]},
+          id:[N], lon:[N], lat:[N],
+          ag:[ [N valori per TR=30], [N per TR=50], ... 9 array ],
+          F0:[ 9 array di N valori ], Tc:[ 9 array di N valori ] }
+   convert_grid.py genera per default il formato C.
+====================================================================== */
+let GRID = null;      // rappresentazione interna unificata: {meta, count, id[], lon[], lat[], ag[t][i], F0[t][i], Tc[t][i]}
+let gridLoadError = null;
+
+// Reticolo minimo di riserva (solo se grid-data.json non è raggiungibile,
+// es. pagina aperta con doppio click senza server locale -> fetch bloccato)
+const FALLBACK_GRID = {
+  meta:{ source:"FALLBACK interno (grid-data.json non raggiungibile)", trValues:[30,50,72,101,140,201,475,975,2475] },
+  nodes:[
+    {id:1, lon:13.40, lat:42.35, ag:[0.076,0.096,0.111,0.129,0.145,0.164,0.261,0.323,0.400], F0:[2.44,2.44,2.44,2.44,2.44,2.44,2.44,2.44,2.44], Tc:[0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28]},
+    {id:2, lon:12.50, lat:41.90, ag:[0.034,0.043,0.050,0.058,0.065,0.074,0.117,0.145,0.180], F0:[2.35,2.35,2.35,2.35,2.35,2.35,2.35,2.35,2.35], Tc:[0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28]},
+    {id:3, lon:9.19, lat:45.46, ag:[0.020,0.026,0.030,0.035,0.039,0.044,0.070,0.087,0.107], F0:[2.50,2.50,2.50,2.50,2.50,2.50,2.50,2.50,2.50], Tc:[0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28,0.28]},
+  ]
+};
+
+// Converte qualunque dei 3 formati supportati nella rappresentazione interna
+// unificata: colonnare, ag/F0/Tc indicizzati come [trIndex][nodeIndex] per
+// un accesso O(1) durante l'interpolazione spaziale (che lavora a TR fissato).
+function normalizeGrid(raw){
+  const trValues = raw.meta.trValues;
+  const T = trValues.length;
+  let ids, lons, lats, ag, F0, Tc;
+
+  if(Array.isArray(raw.id) && Array.isArray(raw.lon) && Array.isArray(raw.ag)){
+    // Formato C: già colonnare
+    ids = raw.id; lons = raw.lon; lats = raw.lat;
+    ag = raw.ag; F0 = raw.F0; Tc = raw.Tc;
+  } else if(Array.isArray(raw.nodes)){
+    const N = raw.nodes.length;
+    ids = new Array(N); lons = new Array(N); lats = new Array(N);
+    ag = Array.from({length:T}, ()=> new Array(N));
+    F0 = Array.from({length:T}, ()=> new Array(N));
+    Tc = Array.from({length:T}, ()=> new Array(N));
+    raw.nodes.forEach((n, idx)=>{
+      if(Array.isArray(n)){
+        // Formato B: [id,lon,lat, ag1,F01,Tc1, ...]
+        ids[idx]=n[0]; lons[idx]=n[1]; lats[idx]=n[2];
+        for(let t=0;t<T;t++){ ag[t][idx]=n[3+t*3]; F0[t][idx]=n[3+t*3+1]; Tc[t][idx]=n[3+t*3+2]; }
+      } else {
+        // Formato A: oggetto {id,lon,lat,ag[],F0[],Tc[]}
+        ids[idx]=n.id; lons[idx]=n.lon; lats[idx]=n.lat;
+        for(let t=0;t<T;t++){ ag[t][idx]=n.ag[t]; F0[t][idx]=n.F0[t]; Tc[t][idx]=n.Tc[t]; }
+      }
+    });
+  } else {
+    throw new Error('Formato grid-data.json non riconosciuto');
+  }
+
+  return { meta: raw.meta, count: ids.length, id: ids, lon: lons, lat: lats, ag, F0, Tc };
+}
+
+async function loadGrid(){
+  try{
+    const resp = await fetch('grid-data.json', {cache:'no-store'});
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    const raw = await resp.json();
+    GRID = normalizeGrid(raw);
+    console.info('Griglia sismica caricata:', (raw.meta && raw.meta.source) || '(fonte non specificata)', '-', GRID.count, 'nodi');
+  }catch(err){
+    gridLoadError = err;
+    GRID = normalizeGrid(FALLBACK_GRID);
+    console.warn('grid-data.json non caricato, uso reticolo di riserva interno (3 nodi). Motivo:', err.message,
+      '\nSe la pagina è stata aperta come file locale (file://), avvia un piccolo server locale, es.: python3 -m http.server, poi apri http://localhost:8000/index.html');
+  }
+}
+
+function haversineKm(lat1,lon1,lat2,lon2){
+  const R=6371, toRad=d=>d*Math.PI/180;
+  const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return 2*R*Math.asin(Math.sqrt(a));
+}
+
+function clamp(v,lo,hi){ return Math.min(hi, Math.max(lo, v)); }
+
+// Cache delle distanze dal sito corrente a tutti i nodi: evita di ricalcolare
+// l'intero reticolo (10751 nodi) ad ogni chiamata quando, in un solo click su
+// "Calcola", si valutano più periodi di ritorno per lo stesso sito.
+let _distCache = { lat:null, lon:null, dists:null };
+
+function getDistances(lat, lon){
+  if(_distCache.lat === lat && _distCache.lon === lon) return _distCache.dists;
+  const N = GRID.count;
+  const dists = new Array(N);
+  for(let i=0;i<N;i++) dists[i] = haversineKm(lat, lon, GRID.lat[i], GRID.lon[i]);
+  _distCache = { lat, lon, dists };
+  return dists;
+}
+
+// Interpolazione spaziale IDW sui k nodi più vicini, per un dato indice di TR (0..8).
+// Lavora sulla rappresentazione colonnare interna: O(numero nodi) per chiamata,
+// trascurabile anche con 10751 nodi (poche migliaia di operazioni in virgola mobile).
+function spatialInterp(lat, lon, trIndex, k=4){
+  const dists = getDistances(lat, lon);
+  const N = GRID.count;
+
+  // selezione dei k nodi più vicini senza ordinare l'intero array
+  const nearest = [];
+  for(let i=0;i<N;i++){
+    if(nearest.length < k){
+      nearest.push(i);
+      if(nearest.length === k) nearest.sort((a,b)=>dists[a]-dists[b]);
+    } else if(dists[i] < dists[nearest[k-1]]){
+      nearest[k-1] = i;
+      for(let j=k-1;j>0 && dists[nearest[j]]<dists[nearest[j-1]];j--){
+        [nearest[j],nearest[j-1]] = [nearest[j-1],nearest[j]];
+      }
+    }
+  }
+
+  const exact = nearest.find(i=>dists[i] < 0.05);
+  const pick = exact!==undefined ? [exact] : nearest;
+
+  let wSum=0, agSum=0, f0Sum=0, tcSum=0;
+  const agRow = GRID.ag[trIndex], f0Row = GRID.F0[trIndex], tcRow = GRID.Tc[trIndex];
+  pick.forEach(i=>{
+    const w = 1/Math.max(dists[i], 0.05);
+    wSum += w;
+    agSum += w*agRow[i];
+    f0Sum += w*f0Row[i];
+    tcSum += w*tcRow[i];
+  });
+  return { ag: agSum/wSum, F0: f0Sum/wSum, Tc: tcSum/wSum };
+}
+
+// Interpolazione log-log (di potenza) tra due valori riferiti a TR1 < TR < TR2
+function logInterp(v1, v2, TR1, TR2, TR){
+  if(v1<=0 || v2<=0) return v1 + (v2-v1)*((TR-TR1)/(TR2-TR1)); // fallback lineare
+  const k = Math.log(TR/TR1)/Math.log(TR2/TR1);
+  return v1*Math.pow(v2/v1, k);
+}
+
+// Restituisce {ag, F0, Tc0} per il sito e il TR desiderato, tramite doppia interpolazione
+function hazardAtTR(lat, lon, TR){
+  const trRef = GRID.meta.trValues;
+  const TRc = clamp(TR, trRef[0], trRef[trRef.length-1]);
+
+  let i = 0;
+  while(i < trRef.length-2 && trRef[i+1] < TRc) i++;
+  const TR1 = trRef[i], TR2 = trRef[i+1];
+
+  const p1 = spatialInterp(lat, lon, i);
+  const p2 = spatialInterp(lat, lon, i+1);
+
+  const ag  = logInterp(p1.ag,  p2.ag,  TR1, TR2, TRc);
+  const F0  = logInterp(p1.F0,  p2.F0,  TR1, TR2, TRc);
+  const Tc0 = logInterp(p1.Tc,  p2.Tc,  TR1, TR2, TRc);
+
+  return { ag: clamp(ag, 0.005, 0.8), F0: clamp(F0, 2.0, 3.2), Tc0: clamp(Tc0, 0.1, 0.8) };
+}
+
+/* ======================================================================
+   3. TEMPI DI RITORNO E COEFFICIENTI NTC 2018
+====================================================================== */
+const LIMIT_STATES = [
+  {code:'SLO', label:'SLO — Operativita\'', pvr:0.81},
+  {code:'SLD', label:'SLD — Danno', pvr:0.63},
+  {code:'SLV', label:'SLV — Salvaguardia vita', pvr:0.10},
+  {code:'SLC', label:'SLC — Collasso', pvr:0.05},
+];
+
+function trFromPvr(VR, PVR){
+  return -VR / Math.log(1-PVR);
+}
+
+function computeSs(cat, F0, agg){
+  switch(cat){
+    case 'A': return 1.00;
+    case 'B': return clamp(1.40-0.40*F0*agg, 1.00, 1.20);
+    case 'C': return clamp(1.70-0.60*F0*agg, 1.00, 1.50);
+    case 'D': return clamp(2.40-1.50*F0*agg, 0.90, 1.80);
+    case 'E': return clamp(2.00-1.10*F0*agg, 1.00, 1.60);
+  }
+}
+function computeCc(cat, Tc0){
+  switch(cat){
+    case 'A': return 1.00;
+    case 'B': return 1.10*Math.pow(Tc0,-0.20);
+    case 'C': return 1.05*Math.pow(Tc0,-0.33);
+    case 'D': return 1.25*Math.pow(Tc0,-0.50);
+    case 'E': return 1.15*Math.pow(Tc0,-0.40);
+  }
+}
+function computeSt(topo){
+  return {T1:1.00, T2:1.20, T3:1.20, T4:1.40}[topo];
+}
+
+/* Spettro elastico orizzontale Se(T) — NTC2018 §3.2.3.2.1 */
+function seHorizontal(T, ag, S, F0, Tb, Tc, Td, eta){
+  if(T < Tb) return ag*S*eta*F0*(T/Tb + (1/(eta*F0))*(1-T/Tb));
+  if(T < Tc) return ag*S*eta*F0;
+  if(T < Td) return ag*S*eta*F0*(Tc/T);
+  return ag*S*eta*F0*(Tc*Td/(T*T));
+}
+
+/* Spettro elastico verticale Sve(T) — Circolare NTC2018, parametri fissi */
+function seVertical(T, ag, F0, eta){
+  const Fv = 1.35*F0*Math.pow(ag,0.5);
+  const TbV=0.05, TcV=0.15, TdV=1.0;
+  if(T < TbV) return ag*1.0*eta*Fv*(T/TbV + (1/(eta*Fv))*(1-T/TbV));
+  if(T < TcV) return ag*1.0*eta*Fv;
+  if(T < TdV) return ag*1.0*eta*Fv*(TcV/T);
+  return ag*1.0*eta*Fv*(TcV*TdV/(T*T));
+}
+
+/* ======================================================================
+   4. CHART.JS
+====================================================================== */
+let spectrumChart = null;
+function buildSpectrumChart(TArray, hSeries, vSeries, mode){
+  const ctx = document.getElementById('spectrumChart').getContext('2d');
+  const datasets = [];
+  if(mode==='both' || mode==='h'){
+    datasets.push({label:'Se orizzontale (g)', data:hSeries, borderColor:'#2f7dd6', backgroundColor:'transparent', borderWidth:2, pointRadius:0, tension:0.15});
+  }
+  if(mode==='both' || mode==='v'){
+    datasets.push({label:'Sve verticale (g)', data:vSeries, borderColor:'#b5501a', backgroundColor:'transparent', borderWidth:2, pointRadius:0, tension:0.15});
+  }
+  if(spectrumChart) spectrumChart.destroy();
+  spectrumChart = new Chart(ctx, {
+    type:'line',
+    data:{ labels:TArray.map(t=>t.toFixed(2)), datasets },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      animation:{duration:250},
+      interaction:{mode:'index', intersect:false},
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{title:(items)=>'T = '+items[0].label+' s'}} },
+      scales:{
+        x:{ title:{display:true, text:'Periodo T (s)'}, ticks:{maxTicksLimit:12} },
+        y:{ title:{display:true, text:'Accelerazione spettrale S_e (g)'}, beginAtZero:true }
+      }
+    }
+  });
+}
+
+/* ======================================================================
+   5. UI: TOGGLE PANNELLO LIQUEFAZIONE
+====================================================================== */
+document.getElementById('liqEnable').addEventListener('change', e=>{
+  document.getElementById('liqFields').style.display = e.target.checked ? 'block' : 'none';
+});
+
+/* ======================================================================
+   6. STATO CALCOLO PRINCIPALE
+====================================================================== */
+let lastResults = null; // { lat, lon, VR, byLS: {SLO:{...}, ...} }
+
+function runCalculation(){
+  const lat = parseFloat(document.getElementById('lat').value);
+  const lon = parseFloat(document.getElementById('lon').value);
+  const soilCat = document.getElementById('soilCat').value;
+  const topoCat = document.getElementById('topoCat').value;
+  const VN = parseFloat(document.getElementById('vn').value);
+  const CU = parseFloat(document.getElementById('cu').value);
+  const damping = parseFloat(document.getElementById('damping').value);
+  const eta = Math.max(0.55, Math.sqrt(10/(5+damping)));
+
+  const VR = VN*CU;
+  const St = computeSt(topoCat);
+
+  const byLS = {};
+  LIMIT_STATES.forEach(ls=>{
+    const TR = trFromPvr(VR, ls.pvr);
+    const hz = hazardAtTR(lat, lon, TR);
+    const agg = hz.ag; // in g
+    const Ss = computeSs(soilCat, hz.F0, agg);
+    const Cc = computeCc(soilCat, hz.Tc0);
+    const Tc = Cc*hz.Tc0;
+    const Tb = Tc/3;
+    const Td = 4.0*agg + 1.6;
+    const S = Ss*St;
+    const amax = S*agg;
+
+    // Coefficienti sismici kh, kv (NTC2018 §7.11.3.5.2, tabella semplificata)
+    let betam;
+    if(soilCat==='A') betam = 0.20;
+    else betam = (amax <= 0.20) ? 0.24 : 0.28;
+    const kh = betam*amax;
+    const kv = 0.5*kh;
+
+    byLS[ls.code] = {TR, ag:agg, F0:hz.F0, Tc0:hz.Tc0, Ss, St, Cc, Tc, Tb, Td, S, amax, kh, kv, eta};
+  });
+
+  lastResults = {lat, lon, VR, VN, CU, soilCat, topoCat, damping, eta, byLS};
+  renderHazardTable();
+  renderSelectedLS();
+  refreshDisaggregation();
+  renderLiquefaction();
+}
+
+function fmt(v, d=3){ return (isFinite(v) ? v.toFixed(d) : '–'); }
+
+function renderHazardTable(){
+  const tbody = document.getElementById('hazardTableBody');
+  tbody.innerHTML = '';
+  LIMIT_STATES.forEach(ls=>{
+    const r = lastResults.byLS[ls.code];
+    const tr = document.createElement('tr');
+    if(ls.code==='SLV') tr.classList.add('hl');
+    tr.innerHTML = `<td>${ls.label}</td><td>${(ls.pvr*100).toFixed(0)}%</td><td>${r.TR.toFixed(0)}</td><td>${fmt(r.ag,3)}</td><td>${fmt(r.F0,2)}</td><td>${fmt(r.Tc0,3)}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderSelectedLS(){
+  const code = document.getElementById('lsSelect').value;
+  const r = lastResults.byLS[code];
+
+  document.getElementById('kpiS').textContent = fmt(r.S, 3);
+  document.getElementById('kpiAmax').textContent = fmt(r.amax, 3);
+  document.getElementById('kpiKh').textContent = fmt(r.kh, 3);
+  document.getElementById('kpiKv').textContent = fmt(r.kv, 3);
+
+  const ampliBody = document.getElementById('ampliTableBody');
+  ampliBody.innerHTML = `
+    <tr><td>Coefficiente stratigrafico S<sub>S</sub></td><td>${fmt(r.Ss,3)}</td></tr>
+    <tr><td>Coefficiente topografico S<sub>T</sub></td><td>${fmt(r.St,3)}</td></tr>
+    <tr><td>Coefficiente C<sub>C</sub></td><td>${fmt(r.Cc,3)}</td></tr>
+    <tr><td>Periodo T<sub>B</sub> (s)</td><td>${fmt(r.Tb,3)}</td></tr>
+    <tr><td>Periodo T<sub>C</sub> (s)</td><td>${fmt(r.Tc,3)}</td></tr>
+    <tr><td>Periodo T<sub>D</sub> (s)</td><td>${fmt(r.Td,3)}</td></tr>
+    <tr><td>Fattore smorzamento η</td><td>${fmt(r.eta,3)}</td></tr>
+  `;
+
+  document.getElementById('outTopo').textContent = lastResults.topoCat;
+  document.getElementById('outKh2').textContent = fmt(r.kh,3);
+  document.getElementById('outKv2').textContent = '±' + fmt(r.kv,3);
+
+  // costruzione spettro
+  const Tmax = 4.0;
+  const step = 0.02;
+  const TArray = [];
+  const hSeries = [];
+  const vSeries = [];
+  for(let T=0; T<=Tmax+1e-9; T+=step){
+    TArray.push(T);
+    hSeries.push(seHorizontal(T, r.ag, r.S, r.F0, r.Tb, r.Tc, r.Td, r.eta));
+    vSeries.push(seVertical(T, r.ag, r.F0, r.eta));
+  }
+  const mode = document.getElementById('spectrumMode').value;
+  buildSpectrumChart(TArray, hSeries, vSeries, mode);
+}
+
+/* ======================================================================
+   7. DISAGGREGAZIONE DELLA PERICOLOSITA' SISMICA
+   Header "terremoto dominante" (Mw, R, epsilon medi) + matrice bivariata
+   Mw-R + grafico a barre impilate, sullo stile dei grafici di
+   disaggregazione INGV (MPS04/S1).
+
+   IMPORTANTE: la matrice di contributo per cella (%) qui generata è un
+   MODELLO ILLUSTRATIVO (gaussiana bivariata in Mw ed R, calibrata sui
+   valori medi Mw/R/epsilon), NON i dati reali di disaggregazione INGV per
+   il nodo e il TR esatti. La disaggregazione ufficiale richiede l'analisi
+   probabilistica completa (PSHA) sui cataloghi di sorgente reali e va
+   richiesta al servizio INGV (progetto MPS04/S1) per un uso professionale.
+====================================================================== */
+
+const MW_EDGES = [4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0];
+const R_EDGES  = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 999];
+const MW_COLORS = ['#dbe7f5','#bcd6ee','#94bde3','#6ea3d6','#4d89c7','#2f7dd6','#1f5fab','#153f73'];
+
+function mwBinLabel(i){ return i === MW_EDGES.length-2 ? `${MW_EDGES[i].toFixed(1)}–${MW_EDGES[i+1].toFixed(1)}` : `${MW_EDGES[i].toFixed(1)}–${MW_EDGES[i+1].toFixed(1)}`; }
+function rBinLabel(i){ return R_EDGES[i+1] > 500 ? `${R_EDGES[i]}+` : `${R_EDGES[i]}–${R_EDGES[i+1]}`; }
+
+// Usa la stessa interpolazione ufficiale (hazardAtTR) già impiegata per gli spettri,
+// così la stima è coerente con il resto dell'app invece di duplicare la logica.
+function estimateDisaggregation(lat, lon, TR){
+  const haz = hazardAtTR(lat, lon, TR);
+  const ag = haz.ag;
+  let Mw, R, eps;
+  if(ag >= 0.25){ Mw = 6.3; R = 12; eps = 0.3; }
+  else if(ag >= 0.18){ Mw = 5.9; R = 18; eps = 0.6; }
+  else if(ag >= 0.10){ Mw = 5.5; R = 25; eps = 1.0; }
+  else { Mw = 5.0; R = 35; eps = 1.5; }
+
+  // Correzione in funzione del periodo di ritorno: TR più lunghi (eventi più
+  // rari) tendono a scenari leggermente più energetici e con epsilon più alto.
+  const trAdj = Math.log(TR/475) / Math.log(2475/475); // ~ -1.5..+1 nel range dei TR di norma
+  Mw  = clamp(Mw + trAdj*0.15, 4.5, 7.8);
+  eps = clamp(eps + trAdj*0.45, 0.0, 2.3);
+  R   = clamp(R - trAdj*3, 5, 60);
+
+  return { Mw: Math.round(Mw*10)/10, R: Math.round(R), eps: Math.round(eps*100)/100 };
+}
+
+// Distribuzione bivariata illustrativa Mw x R, normalizzata a 100%
+function buildDisaggMatrix(Mw, R, eps){
+  const sigmaM = 0.55;
+  const sigmaR = Math.max(8, R*0.45);
+
+  const mwMid = []; for(let i=0;i<MW_EDGES.length-1;i++) mwMid.push((MW_EDGES[i]+MW_EDGES[i+1])/2);
+  const rMid  = []; for(let i=0;i<R_EDGES.length-1;i++)  rMid.push(R_EDGES[i+1] > 500 ? R_EDGES[i]+15 : (R_EDGES[i]+R_EDGES[i+1])/2);
+
+  let raw = [], total = 0;
+  for(let mi=0; mi<mwMid.length; mi++){
+    raw.push([]);
+    for(let ri=0; ri<rMid.length; ri++){
+      const wM = Math.exp(-0.5*Math.pow((mwMid[mi]-Mw)/sigmaM, 2));
+      const wR = Math.exp(-0.5*Math.pow((rMid[ri]-R)/sigmaR, 2));
+      // sposta lievemente il peso verso magnitudo più alta al crescere di epsilon
+      // (scenari a epsilon elevato sono tipicamente associati a eventi più energetici)
+      const epsShift = Math.max(0.05, 1 + (eps-1)*0.15*(mwMid[mi]-Mw)/sigmaM);
+      const w = wM*wR*epsShift;
+      raw[mi].push(w);
+      total += w;
+    }
+  }
+  const pct = raw.map(row => row.map(v => (v/total)*100));
+
+  let best = {mi:0, ri:0, val:-1};
+  pct.forEach((row,mi)=> row.forEach((v,ri)=>{ if(v>best.val) best = {mi, ri, val:v}; }));
+
+  return { pct, dominant: best };
+}
+
+function geoSynthesisNote(Mw, R, eps){
+  const range = R < 15 ? 'corto raggio' : (R < 40 ? 'medio raggio' : 'lungo raggio');
+  const mag = Mw < 5.0 ? 'magnitudo contenuta' : (Mw < 6.2 ? 'magnitudo moderata' : 'magnitudo elevata');
+  const epsNote = eps < 0.6
+    ? "coerente con l'attività sismica ordinaria dell'area"
+    : (eps < 1.2 ? 'con un contributo apprezzabile di eventi non ordinari' : "dominato da eventi non ordinari, relativamente rari per l'area");
+  return `Sismicità dominante a ${range} con ${mag} (M<sub>w</sub> ≈ ${Mw.toFixed(1)}, R ≈ ${R.toFixed(0)} km), ${epsNote} (ε ≈ ${eps.toFixed(2)}).`;
+}
+
+let disaggChart = null;
+function renderDisaggChart(pct){
+  const ctx = document.getElementById('disaggChart').getContext('2d');
+  const rLabels = R_EDGES.slice(0,-1).map((_,i)=>rBinLabel(i));
+  const datasets = pct.map((row, mi) => ({
+    label: mwBinLabel(mi),
+    data: row,
+    backgroundColor: MW_COLORS[mi],
+    borderWidth: 0,
+  }));
+  if(disaggChart) disaggChart.destroy();
+  disaggChart = new Chart(ctx, {
+    type:'bar',
+    data:{ labels: rLabels, datasets },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      animation:{duration:250},
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          callbacks:{
+            title:(items)=> 'R = '+items[0].label+' km',
+            label:(item)=> `M_w ${item.dataset.label}: ${item.parsed.y.toFixed(1)}%`
+          }
+        }
+      },
+      scales:{
+        x:{ stacked:true, title:{display:true, text:'Distanza R (km)'} },
+        y:{ stacked:true, beginAtZero:true, title:{display:true, text:'Contributo (%)'} }
+      }
+    }
+  });
+
+  const legend = document.getElementById('disaggLegend');
+  legend.innerHTML = pct.map((_,mi)=>
+    `<span><span class="legend-swatch" style="background:${MW_COLORS[mi]};"></span>M<sub>w</sub> ${mwBinLabel(mi)}</span>`
+  ).join('');
+}
+
+function renderDisaggMatrixTable(pct, dominant){
+  const table = document.getElementById('disaggMatrixTable');
+  const maxV = Math.max(...pct.flat());
+  let html = '<thead><tr><th>M<sub>w</sub> \\ R (km)</th>';
+  for(let ri=0; ri<pct[0].length; ri++) html += `<th>${rBinLabel(ri)}</th>`;
+  html += '</tr></thead><tbody>';
+  pct.forEach((row, mi)=>{
+    html += `<tr><th style="text-align:left;">${mwBinLabel(mi)}</th>`;
+    row.forEach((v, ri)=>{
+      const intensity = maxV > 0 ? v/maxV : 0;
+      const bg = `rgba(47,125,214,${(intensity*0.65).toFixed(2)})`;
+      const isDominant = (mi===dominant.mi && ri===dominant.ri);
+      html += `<td style="background:${bg}; ${isDominant?'font-weight:700; outline:2px solid var(--accent-dark); outline-offset:-2px;':''}">${v.toFixed(1)}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody>';
+  table.innerHTML = html;
+}
+
+function renderDisaggregation(){
+  const Mw = parseFloat(document.getElementById('magMw').value);
+  const R = parseFloat(document.getElementById('distR').value);
+  const eps = parseFloat(document.getElementById('magEps').value);
+  if(isNaN(Mw) || isNaN(R) || isNaN(eps)) return;
+
+  document.getElementById('kpiDisaggMw').textContent = Mw.toFixed(1);
+  document.getElementById('kpiDisaggR').textContent = R.toFixed(0);
+  document.getElementById('kpiDisaggEps').textContent = eps.toFixed(2);
+  document.getElementById('disaggNote').innerHTML = geoSynthesisNote(Mw, R, eps);
+
+  if(lastResults){
+    const code = document.getElementById('lsSelect').value;
+    document.getElementById('disaggTRLabel').textContent = lastResults.byLS[code].TR.toFixed(0);
+  }
+
+  const { pct, dominant } = buildDisaggMatrix(Mw, R, eps);
+  renderDisaggChart(pct);
+  renderDisaggMatrixTable(pct, dominant);
+}
+
+// Traccia se i campi Mw/R/eps sono in modalità "auto" (seguono il TR
+// selezionato) oppure sono stati impostati manualmente dall'utente (es.
+// perché ha inserito i valori di un report di disaggregazione ufficiale).
+// In modalità auto, ogni ricalcolo o cambio di stato limite aggiorna la
+// stima; in modalità manuale, i valori inseriti dall'utente non vengono
+// mai sovrascritti da un ricalcolo.
+let disaggAutoTrack = true;
+
+// Da chiamare dopo ogni runCalculation() e ad ogni cambio di stato limite:
+// in modalità auto ricalcola Mw/R/eps per il TR corrente, poi in ogni caso
+// aggiorna KPI, nota di sintesi, grafico e matrice.
+function refreshDisaggregation(){
+  if(!lastResults) return;
+  if(disaggAutoTrack){
+    const code = document.getElementById('lsSelect').value;
+    const TR = lastResults.byLS[code].TR;
+    const est = estimateDisaggregation(lastResults.lat, lastResults.lon, TR);
+    document.getElementById('magMw').value = est.Mw.toFixed(1);
+    document.getElementById('distR').value = est.R.toFixed(0);
+    document.getElementById('magEps').value = est.eps.toFixed(2);
+  }
+  renderDisaggregation();
+}
+
+['magMw','distR','magEps'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', ()=>{
+    disaggAutoTrack = false; // l'utente ha preso il controllo manuale dei valori
+    renderDisaggregation();
+  });
+});
+
+document.getElementById('btnEstimateDisagg').addEventListener('click', ()=>{
+  disaggAutoTrack = true; // torna a seguire automaticamente il TR selezionato
+  const lat = parseFloat(document.getElementById('lat').value);
+  const lon = parseFloat(document.getElementById('lon').value);
+  const code = lastResults ? document.getElementById('lsSelect').value : 'SLV';
+  const TR = lastResults ? lastResults.byLS[code].TR : 475;
+  const est = estimateDisaggregation(lat, lon, TR);
+  document.getElementById('magMw').value = est.Mw.toFixed(1);
+  document.getElementById('distR').value = est.R.toFixed(0);
+  document.getElementById('magEps').value = est.eps.toFixed(2);
+  renderDisaggregation();
+});
+
+document.getElementById('btnToggleMatrix').addEventListener('click', (e)=>{
+  const wrap = document.getElementById('matrixWrap');
+  const show = wrap.style.display === 'none';
+  wrap.style.display = show ? 'block' : 'none';
+  e.target.textContent = show ? 'Nascondi matrice completa' : 'Visualizza matrice completa Mw–R';
+});
+
+/* ======================================================================
+   8. SCREENING LIQUEFAZIONE E PENDII
+====================================================================== */
+function renderLiquefaction(){
+  const box = document.getElementById('liqResult');
+  box.innerHTML = '';
+
+  const topoCat = lastResults.topoCat;
+  if(topoCat !== 'T1'){
+    const div = document.createElement('div');
+    div.className = 'alert alert-warn';
+    div.innerHTML = `<span class="alert-title">Amplificazione topografica attiva (${topoCat})</span>
+      Sito su pendio/rilievo: S<sub>T</sub> = ${computeSt(topoCat).toFixed(2)}. Verificare la stabilita' del pendio in condizioni sismiche (analisi pseudostatica con k<sub>h</sub>, k<sub>v</sub> calcolati, o analisi agli spostamenti secondo Newmark se richiesto).`;
+    box.appendChild(div);
+  }
+
+  if(!document.getElementById('liqEnable').checked) return;
+
+  const gw = parseFloat(document.getElementById('gwDepth').value);
+  const soilType = document.getElementById('soilType').value;
+  const rSLV = lastResults.byLS['SLV'];
+  const amax = rSLV.amax;
+
+  const looseSand = (soilType === 'sabbia_sciolta');
+  const shallowGW = (gw <= 5.0);
+  const highShake = (amax > 0.10);
+
+  let div = document.createElement('div');
+  if(looseSand && shallowGW && highShake){
+    div.className = 'alert alert-danger';
+    div.innerHTML = `<span class="alert-title">Diagnostica preliminare: potenziale liquefacibilita'</span>
+      a<sub>max</sub> = ${amax.toFixed(3)} g &gt; 0.10 g, falda a ${gw.toFixed(1)} m da p.c. (≤ 5 m) e terreno sabbioso sciolto: sussistono le condizioni indicative di innesco secondo i criteri di esclusione semplificati NTC2018 §7.11.3.4.2. <b>Si raccomanda un'analisi di liquefacibilita' approfondita</b> (es. metodo semplificato di Seed &amp; Idriss / Idriss &amp; Boulanger su base CPT/SPT).`;
+  } else if(highShake && (looseSand || shallowGW)){
+    div.className = 'alert alert-warn';
+    div.innerHTML = `<span class="alert-title">Condizioni parzialmente critiche</span>
+      a<sub>max</sub> = ${amax.toFixed(3)} g. Uno solo dei fattori di innesco (falda superficiale o sabbie sciolte) e' presente: si consiglia comunque un approfondimento geotecnico specifico prima di escludere il rischio di liquefazione.`;
+  } else {
+    div.className = 'alert alert-ok';
+    div.innerHTML = `<span class="alert-title">Nessun indicatore preliminare di criticita'</span>
+      In base ai parametri inseriti (a<sub>max</sub> = ${amax.toFixed(3)} g, falda a ${gw.toFixed(1)} m, terreno: ${soilType.replace('_',' ')}) non emergono, a livello di screening, le condizioni tipiche di innesco della liquefazione. Verifica di screening indicativa: non sostituisce l'analisi geotecnica di dettaglio.`;
+  }
+  box.appendChild(div);
+}
+
+/* ======================================================================
+   9. EVENTI
+====================================================================== */
+document.getElementById('btnCalc').addEventListener('click', runCalculation);
+document.getElementById('lsSelect').addEventListener('change', ()=>{
+  renderSelectedLS();
+  refreshDisaggregation();
+});
+document.getElementById('spectrumMode').addEventListener('change', renderSelectedLS);
+document.getElementById('btnPrint').addEventListener('click', ()=>window.print());
+
+// Ridisegna i grafici Chart.js alle dimensioni della vista di stampa prima
+// che il browser generi il PDF, altrimenti i canvas possono restare
+// congelati alla risoluzione dello schermo e apparire tagliati o sfocati.
+window.addEventListener('beforeprint', ()=>{
+  if(spectrumChart) spectrumChart.resize();
+  if(disaggChart) disaggChart.resize();
+});
+
+// calcolo iniziale alla apertura pagina: prima attende il caricamento della griglia
+window.addEventListener('load', async ()=>{
+  const btn = document.getElementById('btnCalc');
+  btn.disabled = true; btn.textContent = 'Caricamento griglia sismica…';
+  await loadGrid();
+  btn.disabled = false; btn.textContent = 'Calcola parametri sismici';
+
+  if(gridLoadError){
+    const note = document.createElement('div');
+    note.className = 'alert alert-warn';
+    note.style.margin = '0 16px 16px';
+    note.innerHTML = `<span class="alert-title">grid-data.json non caricato</span>
+      In uso il reticolo di riserva interno (3 nodi). Se hai aperto il file con un doppio click, il browser blocca il caricamento di file locali via fetch(): avvia un piccolo server locale (es. <code>python3 -m http.server</code> nella cartella dell'app) e apri la pagina da <code>http://localhost:8000/</code>.`;
+    document.querySelector('.col-output').insertBefore(note, document.querySelector('.col-output').firstChild);
+  }
+
+  setTimeout(()=>{ if(map) map.invalidateSize(); runCalculation(); }, 150);
+});
+</script>
+</body>
+</html>
