@@ -1,0 +1,44 @@
+# 🌋 GeoHub — Calcolo Parametri Sismici & Screening Geotecnico (NTC 2018)
+
+[![GitHub Pages](https://img.shields.io/badge/GitHub%20Pages-Live-brightgreen?logo=github)](https://geologiaintasca.github.io/GeoHub/)
+[![NTC 2018](https://img.shields.io/badge/Normativa-NTC%202018-blue)](https://www.gazzettaufficiale.it/eli/id/2018/02/20/18A00716/sg)
+[![Dataset](https://img.shields.io/badge/INGV-10.751%20Nodi-orange)](#-dataset-e-griglia-ingv)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+**GeoHub** è un'applicazione web gratuita, moderna e client-side per la determinazione dei parametri sismici di base, la costruzione degli spettri di risposta NTC 2018, la disaggregazione sismica e lo screening geotecnico preliminare.
+
+🔗 **Link Applicazione Online:** [https://geologiaintasca.github.io/GeoHub/](https://geologiaintasca.github.io/GeoHub/)
+
+---
+
+## 🚀 Caratteristiche Principali
+
+* **Interpolazione Griglia INGV:** Mappatura completa dei **10.751 nodi** del reticolo nazionale (Allegato B, D.M. 14/01/2008) tramite interpolazione spaziale IDW (4 nodi vicini) e interpolazione log-log per 9 periodi di ritorno ($T_R \in [30, 2475]$ anni).
+* **Spettri di Risposta (NTC 2018 cap. 3.2):** Calcolo di $a_g, F_0, T_C^*$ per gli Stati Limite **SLO, SLD, SLV, SLC**, con gestione delle Categorie di Suolo (A-E) e Categorie Topografiche (T1-T4).
+* **Disaggregazione Sismica Avanzata:** Stima automatica del terremoto dominante ($M_w, R, \varepsilon$) coerente con lo Stato Limite selezionato, matrice compattabile con heatmap e grafico impilato stile INGV.
+* **Screening Geotecnico & Liquefazione (NTC 2018 cap. 7.11):** 
+  * Calcolo automatico dell'accelerazione di picco $a_{max}$ e dei coefficienti sismici pseudostatici per pendii ($k_h, k_v$).
+  * Alert preliminare automatico per suscettibilità a liquefazione in presenza di falda e sabbie sature.
+* **Report PDF Professionale:** Generazione immediata di un report pronto per essere allegato alle Relazioni Geologiche/Geotecniche, ottimizzato tramite CSS `@media print` e auto-resizing dei grafici.
+
+---
+
+## 🛠️ Stack Tecnologico
+
+L'app è sviluppata come **Single-Page Application (SPA)** senza dipendenze backend:
+
+* **Frontend:** HTML5, CSS3, JavaScript ES6 (vanilla).
+* **Mappe Interattive:** [Leaflet.js](https://leafletjs.com/) con basemap OpenStreetMap.
+* **Grafici:** [Chart.js](https://www.chartjs.org/) per spettri di risposta e istogrammi di disaggregazione.
+* **Dataset:** File `grid-data.json` (~1.85 MB) strutturato in formato columnar ottimizzato per prestazioni immediate nel browser (<100 ms).
+
+---
+
+## 📊 Dataset e Griglia INGV
+
+I dati di base provengono dal reticolo ufficiale dell'Allegato B (D.M. 14/01/2008). 
+
+Se occorre rigenerare o aggiornare il dataset dal file grezzo `.txt` / `.csv` delle 30 colonne INGV, viene fornito lo script Python d'appoggio `convert_grid.py`:
+
+```bash
+python3 convert_grid.py AllegatoB_INGV.txt grid-data.json
