@@ -20,10 +20,21 @@ Per l'Excel, lo script individua automaticamente:
     tramite il range di valori tipico dell'Italia)
   - le terne ag/F0/Tc* per ciascun periodo di ritorno, riconoscendo pattern
     di intestazione come "T475ag", "T475_ag", "ag_475", "T475 Fo", ecc.
-  - l'unità di misura di ag: in alcune distribuzioni ufficiali ag è espresso
-    in m/s² anziché in g. Lo script lo rileva dal valore massimo osservato
-    (un ag oltre ~1.5 non è fisicamente plausibile in g per l'Italia) e
-    converte automaticamente in g dividendo per 9.80665.
+  - l'unità di misura di ag: le distribuzioni del reticolo derivate dall'Allegato B
+    esprimono tradizionalmente ag in decimi di g (g/10), non in g pieno né in m/s².
+    Lo script rileva questa convenzione dal valore massimo osservato (un ag oltre
+    ~1.5 non è fisicamente plausibile se già in g per l'Italia) e converte
+    dividendo per 10.
+    ATTENZIONE - correzione rispetto a una versione precedente di questo script:
+    una prima versione assumeva erroneamente che l'unità fosse m/s² (dividendo
+    quindi per 9.80665). Verificato puntualmente sul nodo ufficiale più vicino
+    a L'Aquila (id 26528, TR=475): valore grezzo 2.6099 -> ÷10 = 0.2610 g,
+    contro il valore di ~0.26 g ampiamente documentato in letteratura tecnica
+    per quell'area (es. Stucchi et al., studi di microzonazione post-2009);
+    ÷9.80665 avrebbe dato invece 0.2661 g, sistematicamente troppo alto del
+    ~2% su tutti i nodi. Confermato anche da fonti tecniche indipendenti che
+    riportano esplicitamente "l'accelerazione al sito ag è espressa in g/10"
+    per il reticolo di riferimento NTC.
 
 Uso:
     python3 convert_grid.py spettri2008.xls grid-data.json
@@ -52,7 +63,7 @@ import re
 import json
 import argparse
 
-G = 9.80665  # accelerazione di gravità standard, m/s^2
+G = 10.0  # divisore per convertire ag da g/10 (convenzione del reticolo ufficiale) a g
 
 LAT_RANGE = (34.0, 48.0)   # range plausibile per l'Italia (con margine)
 LON_RANGE = (5.0, 20.0)
@@ -258,12 +269,15 @@ def read_text_grid(path):
 # Costruzione del JSON colonnare finale
 # --------------------------------------------------------------------------
 def detect_ag_unit_and_fix(parsed):
-    """Se ag supera la soglia plausibile in g, assume m/s^2 e converte."""
+    """Rileva se ag è espresso in g/10 (convenzione del reticolo ufficiale)
+    e lo riporta in g. Un ag oltre la soglia plausibile se già in g implica
+    che i valori vadano divisi per 10 (vedi nota nel docstring del modulo
+    sulla verifica puntuale contro il nodo ufficiale più vicino a L'Aquila)."""
     max_tr = max(parsed["tr_values"])
     sample = parsed["ag"][max_tr]
     median_val = sorted(sample)[len(sample) // 2]
     if median_val > AG_PLAUSIBLE_MAX_G:
-        print(f"Rilevato ag in m/s² (mediana a TR={max_tr}: {median_val:.3f}) -> conversione in g (÷{G}).")
+        print(f"Rilevato ag in unità g/10 (mediana a TR={max_tr}: {median_val:.3f}) -> conversione in g (÷{G:.0f}).")
         for tr in parsed["tr_values"]:
             parsed["ag"][tr] = [v / G for v in parsed["ag"][tr]]
     else:
@@ -301,7 +315,7 @@ def main():
     ap.add_argument("--header-row", type=int, default=None, help="Indice (0-based) della riga di intestazione nel foglio Excel (default: auto-rilevato)")
     ap.add_argument("--decimals-coord", type=int, default=4, help="Decimali per lat/lon (default 4, ~11 m)")
     ap.add_argument("--decimals-val", type=int, default=3, help="Decimali per ag/F0/Tc* (default 3)")
-    ap.add_argument("--force-ag-unit", choices=["g", "ms2"], default=None, help="Forza l'unità di ag invece di rilevarla automaticamente")
+    ap.add_argument("--force-ag-unit", choices=["g", "g10"], default=None, help="Forza l'unità di ag invece di rilevarla automaticamente ('g10' = valori espressi come g/10)")
     args = ap.parse_args()
 
     ext = os.path.splitext(args.input)[1].lower()
@@ -312,10 +326,10 @@ def main():
         parsed = read_text_grid(args.input)
         source_label = f"Reticolo importato da {os.path.basename(args.input)} (verificare corrispondenza con Allegato B ufficiale, D.M. 14/01/2008 / MIT-INGV Open Data)"
 
-    if args.force_ag_unit == "ms2":
+    if args.force_ag_unit == "g10":
         for tr in parsed["tr_values"]:
             parsed["ag"][tr] = [v / G for v in parsed["ag"][tr]]
-        print("Conversione ag m/s² -> g forzata da --force-ag-unit.")
+        print("Conversione ag g/10 -> g forzata da --force-ag-unit.")
     elif args.force_ag_unit == "g":
         print("Unità ag forzata a 'già in g', nessuna conversione applicata.")
     else:

@@ -819,10 +819,25 @@ function runCalculation(){
     const S = Ss*St;
     const amax = S*agg;
 
-    // Coefficienti sismici kh, kv (NTC2018 §7.11.3.5.2, tabella semplificata)
+    // Coefficienti sismici kh, kv per screening pendii (NTC2018 §7.11.3.5.2, Tab. 7.11.I).
+    // La soglia che seleziona beta_s è basata su ag (accelerazione al sito di
+    // riferimento rigido, NON amplificata), non su amax: la norma classifica il
+    // sito tramite ag e poi applica beta_s all'accelerazione amplificata amax
+    // nella formula finale kh = beta_s * amax / g. Tre fasce per entrambe le
+    // colonne (categoria A e B-C-D-E), non due:
+    //   ag ≤ 0.1g          -> beta_s = 0.20 (A)  / 0.20 (B-C-D-E)
+    //   0.1g < ag ≤ 0.2g   -> beta_s = 0.27 (A)  / 0.24 (B-C-D-E)
+    //   0.2g < ag ≤ 0.4g   -> beta_s = 0.30 (A)  / 0.28 (B-C-D-E)
     let betam;
-    if(soilCat==='A') betam = 0.20;
-    else betam = (amax <= 0.20) ? 0.24 : 0.28;
+    if(soilCat==='A'){
+      if(agg <= 0.1) betam = 0.20;
+      else if(agg <= 0.2) betam = 0.27;
+      else betam = 0.30;
+    } else {
+      if(agg <= 0.1) betam = 0.20;
+      else if(agg <= 0.2) betam = 0.24;
+      else betam = 0.28;
+    }
     const kh = betam*amax;
     const kv = 0.5*kh;
 
