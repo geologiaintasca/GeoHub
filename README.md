@@ -1,8 +1,8 @@
-# SismaSite
+# Geohub - Parametri sismici
 
 Applicazione web per l'analisi sismica preliminare di un sito secondo le Norme Tecniche per le Costruzioni 2018 (NTC 2018): calcola i parametri di pericolosità sismica di base interpolandoli dal reticolo di riferimento ufficiale a 10.751 nodi, genera gli spettri di risposta e supporta lo screening preliminare di pendii e liquefazione.
 
-🔗 **Demo online:** https://geologiaintasca.github.io/GeoHub/
+🔗 **Demo online:** https://geologiaintasca.github.io/GeoHub-Parametri-sismici/
 
 ## Prerequisiti
 
